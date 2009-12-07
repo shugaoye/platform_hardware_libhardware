@@ -134,7 +134,12 @@ static int gralloc_alloc_framebuffer_locked(alloc_device_t* dev,
         // If we have only one buffer, we never use page-flipping. Instead,
         // we return a regular buffer which will be memcpy'ed to the main
         // screen when post is called.
-        int newUsage = (usage & ~GRALLOC_USAGE_HW_FB) | GRALLOC_USAGE_HW_2D;
+        /*
+         * Yi added:
+         * This is only a hack to make the alloc_buffer function to use
+         * ashmem,since pmem is not available for now
+         */
+        int newUsage = (usage & ~GRALLOC_USAGE_HW_FB);// | GRALLOC_USAGE_HW_2D;
         return gralloc_alloc_buffer(dev, bufferSize, newUsage, pHandle);
     }
 
@@ -168,11 +173,8 @@ static int gralloc_alloc_framebuffer_locked(alloc_device_t* dev,
 static int gralloc_alloc_framebuffer(alloc_device_t* dev,
         size_t size, int usage, buffer_handle_t* pHandle)
 {
-    private_module_t* m = reinterpret_cast<private_module_t*>(
-            dev->common.module);
-    pthread_mutex_lock(&m->lock);
+
     int err = gralloc_alloc_framebuffer_locked(dev, size, usage, pHandle);
-    pthread_mutex_unlock(&m->lock);
     return err;
 }
 
@@ -214,7 +216,6 @@ static int init_pmem_area_locked(private_module_t* m)
 
 static int init_pmem_area(private_module_t* m)
 {
-    pthread_mutex_lock(&m->lock);
     int err = m->pmem_master;
     if (err == -1) {
         // first time, try to initialize pmem
@@ -228,7 +229,6 @@ static int init_pmem_area(private_module_t* m)
         // pmem OK
         err = 0;
     }
-    pthread_mutex_unlock(&m->lock);
     return err;
 }
 
@@ -390,12 +390,15 @@ static int gralloc_alloc(alloc_device_t* dev,
     }
 
     int err;
+    private_module_t* m = reinterpret_cast<private_module_t*>(
+                                              dev->common.module);
+    pthread_mutex_lock(&m->lock);
     if (usage & GRALLOC_USAGE_HW_FB) {
         err = gralloc_alloc_framebuffer(dev, size, usage, pHandle);
     } else {
         err = gralloc_alloc_buffer(dev, size, usage, pHandle);
     }
-
+    pthread_mutex_unlock(&m->lock);
     if (err < 0) {
         return err;
     }
