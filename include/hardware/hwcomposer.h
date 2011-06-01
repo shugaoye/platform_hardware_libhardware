@@ -187,6 +187,13 @@ enum {
      * passed to (*prepare)() has changed by more than just the buffer handles.
      */
     HWC_GEOMETRY_CHANGED = 0x00000001,
+
+    /*
+     * HWC_IDLE is set by SurfaceFlinger to indicate that it hasn't seen new
+     * events coming in and is drawing one frame to allow hwc to enter a sleep
+     * state if possible. The current frame should be exactly the same as before.
+     */
+    HWC_IDLE             = 0x00000002,
 };
 
 /*
