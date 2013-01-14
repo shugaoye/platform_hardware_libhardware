@@ -140,10 +140,17 @@ int hw_get_module_by_class(const char *class_id, const char *inst,
      */
 
     /* Loop through the configuration variants looking for a module */
-    for (i=0 ; i<HAL_VARIANT_KEYS_COUNT+1 ; i++) {
+    for (i=-1 ; i<HAL_VARIANT_KEYS_COUNT+1 ; i++) {
         if (i < HAL_VARIANT_KEYS_COUNT) {
-            if (property_get(variant_keys[i], prop, NULL) == 0) {
-                continue;
+            if (i < 0) {
+                snprintf(path, sizeof(path), "hal.%s", name);
+                if (property_get(path, prop, NULL) == 0) {
+                    continue;
+                }
+            } else {
+                if (property_get(variant_keys[i], prop, NULL) == 0) {
+                    continue;
+                }
             }
             snprintf(path, sizeof(path), "%s/%s.%s.so",
                      HAL_LIBRARY_PATH2, name, prop);
