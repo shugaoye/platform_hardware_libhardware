@@ -223,7 +223,11 @@ static int gralloc_alloc(alloc_device_t* dev,
         default:
             return -EINVAL;
     }
-    size_t bpr = (w*bpp + (align-1)) & ~(align-1);
+
+    private_module_t* m = reinterpret_cast<private_module_t*>(
+                        dev->common.module);
+
+    size_t bpr = usage & GRALLOC_USAGE_HW_FB ? m->finfo.line_length : (w*bpp + (align-1)) & ~(align-1);
     size = bpr * h;
     stride = bpr / bpp;
 

@@ -196,6 +196,15 @@ int mapFrameBufferLocked(struct private_module_t* module)
         flags &= ~PAGE_FLIP;
     }
 
+    if (ioctl(fd, FBIOGET_FSCREENINFO, &finfo) == -1)
+        return -errno;
+
+    if (finfo.smem_len <= 0)
+        return -errno;
+
+    if (finfo.smem_len / finfo.line_length < info.yres_virtual)
+        info.yres_virtual = finfo.smem_len / finfo.line_length;
+
     if (info.yres_virtual < info.yres * 2) {
         // we need at least 2 for page-flipping
         info.yres_virtual = info.yres;
@@ -206,6 +215,9 @@ int mapFrameBufferLocked(struct private_module_t* module)
 
     if (ioctl(fd, FBIOGET_VSCREENINFO, &info) == -1)
         return -errno;
+
+    if (finfo.smem_len / finfo.line_length < info.yres_virtual)
+        info.yres_virtual = finfo.smem_len / finfo.line_length;
 
     uint64_t  refreshQuotient =
     (
@@ -243,7 +255,10 @@ int mapFrameBufferLocked(struct private_module_t* module)
             "bpp          = %d\n"
             "r            = %2u:%u\n"
             "g            = %2u:%u\n"
-            "b            = %2u:%u\n",
+            "b            = %2u:%u\n"
+            "a            = %2u:%u\n"
+            "stride       = %d\n"
+            "fbSize       = %d\n",
             fd,
             finfo.id,
             info.xres,
@@ -253,7 +268,10 @@ int mapFrameBufferLocked(struct private_module_t* module)
             info.bits_per_pixel,
             info.red.offset, info.red.length,
             info.green.offset, info.green.length,
-            info.blue.offset, info.blue.length
+            info.blue.offset, info.blue.length,
+            info.transp.offset, info.transp.length,
+            finfo.line_length,
+            finfo.smem_len
     );
 
     ALOGI(   "width        = %d mm (%f dpi)\n"
@@ -263,13 +281,6 @@ int mapFrameBufferLocked(struct private_module_t* module)
             info.height, ydpi,
             fps
     );
-
-
-    if (ioctl(fd, FBIOGET_FSCREENINFO, &finfo) == -1)
-        return -errno;
-
-    if (finfo.smem_len <= 0)
-        return -errno;
 
 
     module->finfo = finfo;
